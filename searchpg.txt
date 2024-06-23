@@ -1,0 +1,520 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:recipefinal/login.dart';
+import 'package:recipefinal/spoon/recipe_model.dart';
+
+import 'package:recipefinal/spoon/screen/aftersearch.dart';
+import 'package:recipefinal/spoon/screen/recipedetails.dart';
+import 'package:recipefinal/spoon/spoonacular_api.dart';
+
+class SearchPage extends StatefulWidget {
+  @override
+  _SearchPageState createState() => _SearchPageState();
+}
+
+class _SearchPageState extends State<SearchPage> {
+  int selectedIndex = 0;
+  bool sea = false;
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _ingredientController = TextEditingController();
+  final SpoonacularApi _spoonacularApi =
+      SpoonacularApi('dee6cddc4b0d484db171c1e3264a4141');
+  List<Recipe> _recipes = [];
+  List<String> ingredients = [];
+  List searchResults = [];
+  Future<void> _searchRecipesByIngredients() async {
+    final String apiKey =
+        'dee6cddc4b0d484db171c1e3264a4141'; // Replace with your Spoonacular API key
+    final String ingredientsQuery = ingredients.join(',');
+    final String url =
+        'https://api.spoonacular.com/recipes/findByIngredients?ingredients=$ingredientsQuery&number=10&apiKey=$apiKey';
+
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> responseData = json.decode(response.body);
+      setState(() {
+        searchResults = (responseData as List)
+            .map((json) => Recipe(
+                  id: json['id'],
+                  title: json['title'],
+                  imageUrl: json['image'],
+                ))
+            .toList();
+        sea = true;
+        Navigator.push(context, MaterialPageRoute(builder: (context) {
+          return AfterSearch(listrecipe: searchResults);
+        }));
+      });
+    } else {
+      throw Exception('Failed to search recipes by ingredients');
+    }
+  }
+
+  @override
+  void dispose() {
+    _ingredientController.dispose();
+    super.dispose();
+  }
+
+  void _searchRecipes() async {
+    final query = _searchController.text;
+
+    if (query.isNotEmpty) {
+      final result = await _spoonacularApi.searchRecipes(query);
+      setState(() {
+        _recipes = (result['results'] as List)
+            .map((json) => Recipe(
+                  id: json['id'],
+                  title: json['title'],
+                  imageUrl: json['image'],
+                ))
+            .toList();
+        sea = true;
+        Navigator.push(context, MaterialPageRoute(builder: (context) {
+          return AfterSearch(listrecipe: _recipes);
+        }));
+      });
+    }
+  }
+
+  ///Image paths and food names
+  final images = [
+    "assets/images/burger.jpg",
+    "assets/images/chicken_g.jpg",
+    "assets/images/spaghetti.jpg",
+    "assets/images/chiken_f.jpeg",
+    "assets/images/pizza.jpg",
+  ];
+
+  final foodNames = [
+    "Grilled Burger",
+    "Grilled Chicken",
+    "spaghetti",
+    "Crispy Fried Chicken",
+    "Pizza",
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    ///For screen size
+
+    final size = MediaQuery.of(context).size;
+    return Scaffold(
+      appBar: AppBar(
+        actions: [
+          IconButton(
+              onPressed: () async {
+                FirebaseAuth.instance.signOut().then((value) {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const LoginPage()));
+                });
+              },
+              icon: const Icon(
+                Icons.logout,
+                size: 25,
+                color: Colors.white,
+              ))
+        ],
+        backgroundColor: Colors.deepOrange,
+        title: const Center(
+          child: Text(
+            "RECIPE",
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      ),
+      body: SafeArea(
+        //container hota remove kelay width double.infinity hoti ani padding child madhe singlechildscroollview hota
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(left: 15, right: 15, bottom: 15, top: 5),
+          child: Column(
+            children: <Widget>[
+              ///Container for Header
+              Container(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    // Expanded(
+                    //   child: Column(
+                    //     children: [
+                    //       const Text(
+                    //         "Looking for your favorite meal!!",
+                    //         style: TextStyle(fontSize: 20),
+                    //       ),
+                    //       TextField(
+                    //         controller: _searchController,
+                    //         decoration: const InputDecoration(
+                    //           hintText: 'Search Recipes',
+                    //         ),
+                    //       ),
+                    //     ],
+                    //   ),
+                    // ),
+                    Expanded(
+                      child: TextField(
+                        controller: _ingredientController,
+                        decoration: InputDecoration(
+                          labelText: 'Enter an ingredient',
+                          suffixIcon: IconButton(
+                            icon: Icon(Icons.add),
+                            onPressed: () {
+                              setState(() {
+                                ingredients
+                                    .add(_ingredientController.text.trim());
+                                _ingredientController.clear();
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    ///For spacing
+                    const SizedBox(
+                      width: 20,
+                    ),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      //crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // InkWell(
+                        //   onTap: () {
+                        //     _searchRecipes;
+                        //   },
+                        //   child:
+                        //       // IconButton(
+                        //       //icon: const
+                        //       Icon(Icons.search),
+                        //   //   color: Colors.grey[800],
+                        //   //   onPressed: () {
+                        //   //     setState(() {
+                        //   //       _searchRecipes;
+                        //   //     });
+                        //   //   },
+                        //   // ),
+                        // ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        ElevatedButton(
+                          style: const ButtonStyle(
+                              elevation: MaterialStatePropertyAll(0)),
+                          //onPressed: _searchRecipes,
+//trying
+                          onPressed: () {
+                            _searchRecipesByIngredients();
+                            ingredients.clear();
+                          },
+
+                          child: const Icon(
+                            Icons.search,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                height: 100,
+                color: Colors.amber,
+                child: ListView.builder(
+                  itemCount: ingredients.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(ingredients[index]),
+                    );
+                  },
+                ),
+              ),
+              Column(),
+              const SizedBox(
+                height: 32,
+              ),
+
+              ///Container For List of Recipes type
+              ///Give 25 percent height relative to screen
+              Container(
+                height: size.height * 0.25,
+                child: sea
+                    ? ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        shrinkWrap: true,
+                        itemBuilder: (context, index) {
+                          // final recipe = _recipes[index];
+                          //trying
+                          final recipe = searchResults[index];
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        // RecipeDetailsScreen(
+                                        //     recipeId: recipe.id),
+                                        //trying
+                                        //AfterSearch(listrecipe: _recipes)
+                                        // AfterSearch(
+                                        //     listrecipe: searchResults)
+                                        RecipeDetails(recipeId: recipe.id)),
+                              );
+                            },
+                            child: AspectRatio(
+                                aspectRatio: 0.9 / 1,
+
+                                ///Width : screen,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Container(
+                                        height: 150,
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(30),
+                                          child:
+                                              //trying
+                                              Image.network(
+                                            'https://spoonacular.com/recipeImages/${recipe.id}-636x393.jpg',
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    ///Add Text Also,
+                                    const SizedBox(
+                                      height: 8,
+                                    ),
+
+                                    ///For spacing
+
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16.0),
+                                      child: Text(
+                                        "${recipe.title} ",
+                                        style: TextStyle(
+                                            color: Colors.grey[800],
+                                            fontSize: 11),
+                                      ),
+                                    )
+                                  ],
+                                )),
+                          );
+                        },
+                        separatorBuilder: (context, _) => const SizedBox(
+                              width: 16,
+                            ),
+                        itemCount: searchResults.length)
+
+                    // ListView.builder(
+                    //     itemCount: _recipes.length,
+                    //     itemBuilder: (context, index) {
+                    //       final recipe = _recipes[index];
+                    //       return
+                    //           //changing ........................................................
+                    //           GestureDetector(
+                    //         onTap: () {
+                    //           Navigator.push(
+                    //             context,
+                    //             MaterialPageRoute(
+                    //               builder: (context) => RecipeDetailsScreen(
+                    //                   recipeId: recipe.id),
+                    //             ),
+                    //           );
+                    //         },
+                    //         child: ListTile(
+                    //           title: AspectRatio(
+                    //               aspectRatio: 0.9 / 1,
+                    //               child: Column(
+                    //                 crossAxisAlignment:
+                    //                     CrossAxisAlignment.start,
+                    //                 children: <Widget>[
+                    //                   Expanded(
+                    //                     child: Container(
+                    //                       child: ClipRRect(
+                    //                         child: Image.network(
+                    //                             "https://spoonacular.com/recipeImages/${recipe.imageUrl}"),
+                    //                         borderRadius:
+                    //                             BorderRadius.circular(30),
+                    //                       ),
+                    //                     ),
+                    //                   ),
+
+                    //                   ///Add Text Also,
+                    //                   SizedBox(
+                    //                     height: 8,
+                    //                   ),
+
+                    //                   ///For spacing
+
+                    //                   Padding(
+                    //                     padding: const EdgeInsets.symmetric(
+                    //                         horizontal: 16.0),
+                    //                     child: Text(
+                    //                       "${recipe.title} ",
+                    //                       style: TextStyle(
+                    //                           color: Colors.grey[800],
+                    //                           fontSize: 11),
+                    //                     ),
+                    //                   )
+                    //                 ],
+                    //               )),
+                    //         ),
+                    //       );
+                    //     })
+                    : ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        shrinkWrap: true,
+                        itemBuilder: (context, index) {
+                          return AspectRatio(
+                              aspectRatio: 0.9 / 1,
+
+                              ///Width : screen,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Expanded(
+                                    child: Container(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(30),
+                                        child: Image.asset(
+                                          images[index],
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                  ///Add Text Also,
+                                  const SizedBox(
+                                    height: 8,
+                                  ),
+
+                                  ///For spacing
+
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16.0),
+                                    child: Text(
+                                      "${foodNames[index]} Recipes",
+                                      style: TextStyle(
+                                          color: Colors.grey[800],
+                                          fontSize: 11),
+                                    ),
+                                  )
+                                ],
+                              ));
+                        },
+                        separatorBuilder: (context, _) => const SizedBox(
+                              width: 16,
+                            ),
+                        itemCount: 4),
+              ),
+
+              ///For vertical spacing
+              const SizedBox(
+                height: 32,
+              ),
+
+              ///For quick recipe list
+              Container(
+                height: size.height * 0.4,
+                child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    shrinkWrap: true,
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() async {
+                            final query = "${foodNames[4 - index]}";
+
+                            if (query.isNotEmpty) {
+                              final result =
+                                  await _spoonacularApi.searchRecipes(query);
+                              setState(() {
+                                _recipes = (result['results'] as List)
+                                    .map((json) => Recipe(
+                                          id: json['id'],
+                                          title: json['title'],
+                                          imageUrl: json['image'],
+                                        ))
+                                    .toList();
+
+                                Navigator.push(context,
+                                    MaterialPageRoute(builder: (context) {
+                                  return AfterSearch(listrecipe: _recipes);
+                                }));
+                              });
+                            }
+                          });
+                        },
+                        child: AspectRatio(
+                            aspectRatio: 0.9 / 1,
+
+                            ///Width : screen,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Expanded(
+                                  child: Container(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(30),
+                                      child: Image.asset(
+                                        images[foodNames.length - 1 - index],
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                ///Add Text Also,
+                                const SizedBox(
+                                  height: 8,
+                                ),
+
+                                ///For spacing
+
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0),
+                                  child: Text(
+                                    "${foodNames[foodNames.length - 1 - index]}",
+                                    style: TextStyle(
+                                        color: Colors.grey[800],
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                // Padding(
+                                //   padding: const EdgeInsets.symmetric(
+                                //       horizontal: 16.0),
+                                //   child: Text(
+                                //     "",
+                                //     style: TextStyle(
+                                //         color: Colors.grey[600],
+                                //         fontSize: 11),
+                                //   ),
+                                // )
+                              ],
+                            )),
+                      );
+                    },
+                    separatorBuilder: (context, _) => const SizedBox(
+                          width: 16,
+                        ),
+                    itemCount: 4),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
